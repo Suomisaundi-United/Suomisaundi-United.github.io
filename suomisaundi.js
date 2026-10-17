@@ -196,6 +196,65 @@
   // Explicitly expose the bounded pool for later monolithic modules, without persistent backing.
   Object.defineProperty(window, 'suomisaundiSessionPool', { value: sessionPool, configurable: false });
 
+  // Cross-tab presence is local to this browser profile and origin, never global.
+  const footerWrap = app.querySelector('footer .wrap');
+  const localMetrics = document.createElement('span');
+  localMetrics.id = 'local-session-metrics';
+  localMetrics.setAttribute('role', 'status');
+  localMetrics.setAttribute('aria-live', 'off');
+  footerWrap.append(' · ', localMetrics);
+  const metricsStyle = document.createElement('style');
+  metricsStyle.textContent = `
+    footer .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+    #local-session-metrics{font-size:.7rem;white-space:normal}
+  `;
+  document.head.appendChild(metricsStyle);
+
+  const sessionId = (globalThis.crypto?.randomUUID?.() || String(Date.now()) + '-' + Math.random().toString(36).slice(2));
+  const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('suomisaundi-presence-v1') : null;
+  const sessions = new Map();
+  const budgetBytes = sessionPool.limit;
+  const formatMiB = bytes => (bytes / 1048576).toFixed(1) + ' MiB';
+  const updateMetrics = () => {
+    const now = Date.now();
+    for (const [id, entry] of sessions) if (now - entry.time > 18000) sessions.delete(id);
+    sessions.set(sessionId, { time: now, reserved: budgetBytes, allocated: sessionPool.used });
+    const count = sessions.size;
+    const reserved = [...sessions.values()].reduce((sum, entry) => sum + entry.reserved, 0);
+    const allocated = [...sessions.values()].reduce((sum, entry) => sum + entry.allocated, 0);
+    localMetrics.textContent = 'Local sessions: ' + count +
+      ' · Total pool capacity: ' + formatMiB(reserved) +
+      ' · Allocated: ' + formatMiB(allocated);
+  };
+  const announce = () => {
+    const data = { type: 'presence', id: sessionId, reserved: budgetBytes, allocated: sessionPool.used };
+    channel?.postMessage(data);
+    updateMetrics();
+  };
+  if (channel) {
+    channel.onmessage = event => {
+      const data = event.data;
+      if (!data || typeof data !== 'object' || typeof data.id !== 'string' || data.id === sessionId) return;
+      if (data.type === 'goodbye') sessions.delete(data.id);
+      else if (data.type === 'presence' && data.reserved === budgetBytes &&
+        Number.isSafeInteger(data.allocated) && data.allocated >= 0 && data.allocated <= budgetBytes) {
+        sessions.set(data.id, { time: Date.now(), reserved: budgetBytes, allocated: data.allocated });
+        if (data.reply) announce();
+      }
+      updateMetrics();
+    };
+    channel.postMessage({ type: 'presence', id: sessionId, reserved: budgetBytes, allocated: 0, reply: true });
+  }
+  announce();
+  const heartbeat = setInterval(announce, 5000);
+  const goodbye = () => {
+    clearInterval(heartbeat);
+    channel?.postMessage({ type: 'goodbye', id: sessionId });
+    channel?.close();
+  };
+  window.addEventListener('pagehide', goodbye, { once: true });
+
+
 
   // Progressive browser capabilities: no external dependencies or separate assets.
   const capabilities = document.createElement('section');
