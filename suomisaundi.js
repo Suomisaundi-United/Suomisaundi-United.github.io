@@ -57,4 +57,118 @@
     <footer><div class="wrap">© ${new Date().getFullYear()} Suomisaundi United</div></footer>
   `;
   document.body.replaceChildren(app);
+
+  // Progressive browser capabilities: no external dependencies or separate assets.
+  const capabilities = document.createElement('section');
+  capabilities.className = 'info';
+  capabilities.id = 'technology';
+  capabilities.innerHTML = `
+    <div class="wrap">
+      <h2>Creative technology</h2>
+      <p class="intro">Browser-native experiments with audio, graphics and compute. Each capability is checked independently.</p>
+      <div class="cards">
+        <article class="card"><h3>WebAssembly</h3><p id="wasm-status" role="status">Checking…</p></article>
+        <article class="card"><h3>WebGPU</h3><p id="gpu-status" role="status">Checking…</p></article>
+        <article class="card"><h3>Web Audio</h3><p id="audio-status" role="status">Ready to check.</p><button id="audio-toggle" type="button">Play tone</button></article>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <h3>Vector waveform · SVG</h3>
+        <svg id="waveform" viewBox="0 0 800 150" role="img" aria-label="Animated vector waveform" style="display:block;width:100%;height:auto">
+          <path id="wave-path" fill="none" stroke="#93e8bc" stroke-width="3" vector-effect="non-scaling-stroke"></path>
+        </svg>
+      </div>
+    </div>
+  `;
+  app.querySelector('main').appendChild(capabilities);
+  app.querySelector('nav').insertAdjacentHTML('beforeend', '<a href="#technology">Technology</a>');
+  const status = (id, value) => { app.querySelector('#' + id).textContent = value; };
+
+  // Tiny valid wasm module exporting answer() -> i32(42).
+  (async () => {
+    if (typeof WebAssembly === 'undefined') {
+      status('wasm-status', 'Unavailable in this browser');
+      return;
+    }
+    try {
+      const bytes = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,127,3,2,1,0,7,10,1,6,97,110,115,119,101,114,0,0,10,6,1,4,0,65,42,11]);
+      const result = await WebAssembly.instantiate(bytes);
+      status('wasm-status', 'Available · computation test: ' + result.instance.exports.answer());
+    } catch (error) {
+      status('wasm-status', 'Available, but test failed');
+      console.warn('Wasm test failed', error);
+    }
+  })();
+
+  (async () => {
+    if (!navigator.gpu || !window.isSecureContext) {
+      status('gpu-status', 'Not available in this browser/context');
+      return;
+    }
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      status('gpu-status', adapter ? 'Available · GPU adapter detected' : 'No compatible GPU adapter');
+    } catch (error) {
+      status('gpu-status', 'Adapter request failed');
+      console.warn('WebGPU check failed', error);
+    }
+  })();
+
+  let audioContext = null;
+  let oscillator = null;
+  let gain = null;
+  const audioButton = app.querySelector('#audio-toggle');
+  if (!(window.AudioContext || window.webkitAudioContext)) {
+    audioButton.disabled = true;
+    status('audio-status', 'Unavailable in this browser');
+  }
+  audioButton.addEventListener('click', async () => {
+    try {
+      if (oscillator) {
+        oscillator.stop();
+        oscillator.disconnect();
+        oscillator = null;
+        if (gain) { gain.disconnect(); gain = null; }
+        audioButton.textContent = 'Play tone';
+        status('audio-status', 'Stopped');
+        return;
+      }
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioContext ||= new AudioContextClass();
+      await audioContext.resume();
+      oscillator = audioContext.createOscillator();
+      gain = audioContext.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 220;
+      gain.gain.value = 0.035;
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start();
+      audioButton.textContent = 'Stop tone';
+      status('audio-status', 'Playing 220 Hz test tone');
+    } catch (error) {
+      status('audio-status', 'Audio could not start');
+      console.warn('Web Audio failed', error);
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if (oscillator) oscillator.stop();
+    if (audioContext) audioContext.close();
+  }, { once: true });
+
+  const wavePath = app.querySelector('#wave-path');
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const drawWave = (time) => {
+    const phase = reduceMotion ? 0 : time * 0.001;
+    let path = '';
+    for (let x = 0; x <= 800; x += 5) {
+      const y = 75 + Math.sin(x * 0.025 + phase) * 29 + Math.sin(x * 0.064 - phase * 0.7) * 12;
+      path += (x ? ' L ' : 'M ') + x + ' ' + y.toFixed(2);
+    }
+    wavePath.setAttribute('d', path);
+    if (!reduceMotion && document.visibilityState === 'visible') requestAnimationFrame(drawWave);
+  };
+  requestAnimationFrame(drawWave);
+  document.addEventListener('visibilitychange', () => {
+    if (!reduceMotion && document.visibilityState === 'visible') requestAnimationFrame(drawWave);
+  });
+
 })();
