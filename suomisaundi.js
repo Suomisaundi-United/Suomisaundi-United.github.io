@@ -87,6 +87,116 @@
   `;
   document.body.replaceChildren(app);
 
+  // Ephemeral resource pool: a budget, not an eager 128 MiB allocation.
+  const sessionPool = (() => {
+    const limit = 128 * 1024 * 1024;
+    const entries = new Map();
+    let used = 0;
+    return Object.freeze({
+      limit,
+      get used() { return used; },
+      allocate(key, bytes) {
+        if (typeof key !== 'string' || !key || entries.has(key) ||
+            !Number.isSafeInteger(bytes) || bytes < 1 || bytes > limit - used) return false;
+        try {
+          entries.set(key, new Uint8Array(bytes));
+          used += bytes;
+          return true;
+        } catch { return false; }
+      },
+      release(key) {
+        const buffer = entries.get(key);
+        if (!buffer) return false;
+        used -= buffer.byteLength;
+        entries.delete(key);
+        return true;
+      },
+      clear() { entries.clear(); used = 0; }
+    });
+  })();
+  window.addEventListener('pagehide', () => sessionPool.clear(), { once: true });
+
+  // No user identifier, authentication token or sensitive information in cookies.
+  const cookieName = 'suomisaundi_prefs';
+  const readCookie = () => {
+    try {
+      const part = document.cookie.split('; ').find(x => x.startsWith(cookieName + '='));
+      return part ? decodeURIComponent(part.slice(cookieName.length + 1)) : null;
+    } catch { return null; }
+  };
+  const writeCookie = (value) => {
+    try {
+      document.cookie = cookieName + '=' + encodeURIComponent(value) +
+        '; Path=/; Max-Age=2592000; SameSite=Lax; Secure';
+      return readCookie() === value;
+    } catch { return false; }
+  };
+  const storageKey = 'suomisaundi.preferences.v1';
+  const readSaved = () => {
+    try {
+      const data = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      return data && typeof data === 'object' && data.consent === true ? data : null;
+    } catch { return null; }
+  };
+  const save = (consent) => {
+    if (consent) {
+      try { localStorage.setItem(storageKey, JSON.stringify({ consent: true, version: 1 })); } catch {}
+      writeCookie('accepted');
+    } else {
+      try { localStorage.removeItem(storageKey); } catch {}
+      try { document.cookie = cookieName + '=; Path=/; Max-Age=0; SameSite=Lax; Secure'; } catch {}
+    }
+  };
+  const existingConsent = readSaved()?.consent === true || readCookie() === 'accepted';
+  const storagePanel = document.createElement('aside');
+  storagePanel.id = 'storage-preferences';
+  storagePanel.setAttribute('aria-label', 'Storage preferences');
+  storagePanel.innerHTML = `
+    <div class="wrap">
+      <span id="storage-message">This site uses temporary browser memory. Optional preferences can be saved on this device.</span>
+      <div class="storage-actions">
+        <button id="storage-accept" type="button">Save preferences</button>
+        <button id="storage-decline" type="button">Volatile only</button>
+        <button id="storage-clear" type="button">Clear saved preferences</button>
+      </div>
+    </div>
+  `;
+  const storageStyles = document.createElement('style');
+  storageStyles.textContent = `
+    #storage-preferences{position:fixed;left:0;right:0;bottom:34px;z-index:99;
+      background:#142129f5;border-top:1px solid var(--border);padding:10px 0;
+      color:var(--text);font-size:.75rem;box-shadow:0 -8px 30px #0005}
+    #storage-preferences .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .storage-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .storage-actions button{font:inherit;cursor:pointer;background:#213b40;color:var(--text);
+      border:1px solid var(--border);border-radius:5px;padding:6px 10px}
+    .storage-actions button:focus-visible{outline:2px solid var(--accent)}
+    @media(max-width:600px){#storage-preferences{font-size:.7rem}.storage-actions button{padding:5px 7px}}
+  `;
+  document.head.appendChild(storageStyles);
+  document.body.appendChild(storagePanel);
+  const message = storagePanel.querySelector('#storage-message');
+  if (existingConsent) {
+    message.textContent = 'Preferences are saved on this device. Session resources remain volatile.';
+    storagePanel.querySelector('#storage-accept').hidden = true;
+    storagePanel.querySelector('#storage-decline').hidden = true;
+  }
+  storagePanel.querySelector('#storage-accept').addEventListener('click', () => {
+    save(true);
+    storagePanel.remove();
+  });
+  storagePanel.querySelector('#storage-decline').addEventListener('click', () => {
+    save(false);
+    storagePanel.remove();
+  });
+  storagePanel.querySelector('#storage-clear').addEventListener('click', () => {
+    save(false);
+    storagePanel.remove();
+  });
+  // Explicitly expose the bounded pool for later monolithic modules, without persistent backing.
+  Object.defineProperty(window, 'suomisaundiSessionPool', { value: sessionPool, configurable: false });
+
+
   // Progressive browser capabilities: no external dependencies or separate assets.
   const capabilities = document.createElement('section');
   capabilities.className = 'info';
