@@ -50,6 +50,12 @@
     footer .wrap{width:min(1100px,calc(100% - 40px))}
     section.info:last-child{scroll-margin-bottom:var(--footer-height)}
   `;
+  // Orbitron is the sole visual font family across all site components.
+  style.textContent += `
+    @font-face{font-family:"Orbitron";src:url("./fonts/Orbitron-VariableFont_wght.ttf") format("truetype");font-style:normal;font-weight:400 900;font-display:swap}
+    html,body,button,input,textarea,select,svg{font-family:"Orbitron",sans-serif!important}
+    *{font-family:inherit}
+  `;
   document.head.appendChild(style);
 
   const app = document.createElement('div');
