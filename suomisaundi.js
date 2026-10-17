@@ -39,6 +39,17 @@
     .hero,section.info{scroll-snap-align:start;scroll-margin-top:52px}
     @media(max-width:720px){.top{min-height:40px;padding:6px 0}.brand{font-size:.75rem}nav{gap:10px}nav a{font-size:.74rem}}
   `;
+  // Fixed bottom footer; reserve space to prevent content overlap.
+  style.textContent += `
+    :root{--footer-height:34px}
+    body{padding-bottom:var(--footer-height)}
+    footer{position:fixed;bottom:0;left:0;right:0;z-index:100;
+      min-height:var(--footer-height);display:flex;align-items:center;
+      background:rgba(16,28,34,.94);backdrop-filter:blur(12px);
+      border-top:1px solid var(--border);padding:5px 0}
+    footer .wrap{width:min(1100px,calc(100% - 40px))}
+    section.info:last-child{scroll-margin-bottom:var(--footer-height)}
+  `;
   document.head.appendChild(style);
 
   const app = document.createElement('div');
