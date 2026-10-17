@@ -27,6 +27,18 @@
     footer{border-top:1px solid var(--border);padding:28px 0;color:var(--muted);font-size:.9rem}
     @media(max-width:720px){.cards{grid-template-columns:1fr}.hero{padding:80px 0}.top{align-items:flex-start}nav{gap:14px}}
   `;
+  // Compact, edge-snapped site chrome; sticky header and bottom-anchored footer.
+  style.textContent += `
+    html{scroll-padding-top:52px;scroll-snap-type:y proximity}
+    header{position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);background:rgba(16,28,34,.94)}
+    .top{min-height:42px;padding:5px 0;gap:12px}
+    .brand{font-size:.83rem;line-height:1.2}
+    nav{gap:14px}nav a{font-size:.79rem;line-height:1.3}
+    footer{padding:8px 0;font-size:.76rem;line-height:1.35;margin-top:auto}
+    main{flex:1}body{display:flex;flex-direction:column}
+    .hero,section.info{scroll-snap-align:start;scroll-margin-top:52px}
+    @media(max-width:720px){.top{min-height:40px;padding:6px 0}.brand{font-size:.75rem}nav{gap:10px}nav a{font-size:.74rem}}
+  `;
   document.head.appendChild(style);
 
   const app = document.createElement('div');
