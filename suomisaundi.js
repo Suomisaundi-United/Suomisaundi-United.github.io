@@ -58,6 +58,9 @@
   `;
   document.head.appendChild(style);
 
+  // Public ID only; privileged actions require trusted Telegram verification.
+  const TELEGRAM_ADMIN_USER_ID = '8047323497';
+
   const app = document.createElement('div');
   app.innerHTML = `
     <header><div class="wrap top">
