@@ -178,11 +178,14 @@
     #storage-preferences .wrap{width:100%;max-width:100%;min-width:0;padding-left:16px;padding-right:16px}
     #storage-message{min-width:0;overflow-wrap:anywhere;word-break:normal}
     #storage-preferences .storage-actions{min-width:0;max-width:100%}
-    #storage-preferences .storage-actions button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+    #storage-preferences .storage-actions button{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
+    #storage-preferences [hidden]{display:none!important}
     @media(max-width:600px){
       #storage-preferences{font-size:.75rem;bottom:34px;max-height:calc(100dvh - 50px);overflow-y:auto}
       #storage-preferences .wrap{display:flex;flex-direction:column;align-items:stretch;gap:10px}
-      #storage-preferences .storage-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:8px;width:100%}
+      #storage-preferences .storage-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;max-width:100%}
+      #storage-preferences #storage-clear{grid-column:1/-1}
+      #storage-preferences{padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
       #storage-preferences .storage-actions button{padding:9px 8px;min-height:36px}
     }
   `;
