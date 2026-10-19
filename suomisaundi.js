@@ -174,7 +174,17 @@
     .storage-actions button{font:inherit;cursor:pointer;background:#213b40;color:var(--text);
       border:1px solid var(--border);border-radius:5px;padding:6px 10px}
     .storage-actions button:focus-visible{outline:2px solid var(--accent)}
-    @media(max-width:600px){#storage-preferences{font-size:.7rem}.storage-actions button{padding:5px 7px}}
+    #storage-preferences,#storage-preferences *{box-sizing:border-box}
+    #storage-preferences .wrap{width:100%;max-width:100%;min-width:0;padding-left:16px;padding-right:16px}
+    #storage-message{min-width:0;overflow-wrap:anywhere;word-break:normal}
+    #storage-preferences .storage-actions{min-width:0;max-width:100%}
+    #storage-preferences .storage-actions button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+    @media(max-width:600px){
+      #storage-preferences{font-size:.75rem;bottom:34px;max-height:calc(100dvh - 50px);overflow-y:auto}
+      #storage-preferences .wrap{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+      #storage-preferences .storage-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:8px;width:100%}
+      #storage-preferences .storage-actions button{padding:9px 8px;min-height:36px}
+    }
   `;
   document.head.appendChild(storageStyles);
   document.body.appendChild(storagePanel);
