@@ -142,10 +142,24 @@
   localMetrics.setAttribute('role', 'status');
   localMetrics.setAttribute('aria-live', 'off');
   footerWrap.append(' · ', localMetrics);
+  const resetButton = document.createElement('button');
+  resetButton.type = 'button';
+  resetButton.id = 'reset-site-preferences';
+  resetButton.textContent = 'Reset';
+  resetButton.setAttribute('aria-label', 'Reset saved preferences and refresh the page');
+  footerWrap.append(' · ', resetButton);
+  resetButton.addEventListener('click', () => {
+    try { localStorage.removeItem(storageKey); } catch {}
+    try { document.cookie = 'suomisaundi_prefs=; Path=/; Max-Age=0; SameSite=Lax; Secure'; } catch {}
+    sessionPool.clear();
+    window.location.reload();
+  });
   const metricsStyle = document.createElement('style');
   metricsStyle.textContent = `
     footer .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
     #local-session-metrics{font-size:.7rem;white-space:normal}
+    #reset-site-preferences{font:inherit;font-size:.7rem;color:var(--text);background:transparent;border:1px solid var(--border);border-radius:4px;padding:2px 8px;cursor:pointer}
+    #reset-site-preferences:focus-visible{outline:2px solid var(--accent)}
   `;
   document.head.appendChild(metricsStyle);
 
