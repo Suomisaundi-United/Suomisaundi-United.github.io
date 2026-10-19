@@ -230,7 +230,7 @@
   const channel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('suomisaundi-presence-v1') : null;
   const sessions = new Map();
   const budgetBytes = sessionPool.limit;
-  const formatMiB = bytes => (bytes / 1048576).toFixed(1) + ' MiB';
+  const formatMiB = bytes => (bytes / 1048576).toFixed(1) + ' MB';
   const updateMetrics = () => {
     const now = Date.now();
     for (const [id, entry] of sessions) if (now - entry.time > 18000) sessions.delete(id);
@@ -238,9 +238,8 @@
     const count = sessions.size;
     const reserved = [...sessions.values()].reduce((sum, entry) => sum + entry.reserved, 0);
     const allocated = [...sessions.values()].reduce((sum, entry) => sum + entry.allocated, 0);
-    localMetrics.textContent = 'Local sessions: ' + count +
-      ' · Total pool capacity: ' + formatMiB(reserved) +
-      ' · Allocated: ' + formatMiB(allocated);
+    localMetrics.textContent = 'Sessions: ' + count +
+      ' · Pool: ' + formatMiB(reserved) + ' / ' + formatMiB(allocated);
   };
   const announce = () => {
     const data = { type: 'presence', id: sessionId, reserved: budgetBytes, allocated: sessionPool.used };
