@@ -119,96 +119,19 @@
   })();
   window.addEventListener('pagehide', () => sessionPool.clear(), { once: true });
 
-  // No user identifier, authentication token or sensitive information in cookies.
-  const cookieName = 'suomisaundi_prefs';
-  const readCookie = () => {
-    try {
-      const part = document.cookie.split('; ').find(x => x.startsWith(cookieName + '='));
-      return part ? decodeURIComponent(part.slice(cookieName.length + 1)) : null;
-    } catch { return null; }
-  };
-  const writeCookie = (value) => {
-    try {
-      document.cookie = cookieName + '=' + encodeURIComponent(value) +
-        '; Path=/; Max-Age=2592000; SameSite=Lax; Secure';
-      return readCookie() === value;
-    } catch { return false; }
-  };
+  // Persist strictly functional application preferences without tracking or a consent banner.
+  // Browser storage may be unavailable in private or restricted Telegram webviews.
   const storageKey = 'suomisaundi.preferences.v1';
-  const readSaved = () => {
-    try {
-      const data = JSON.parse(localStorage.getItem(storageKey) || 'null');
-      return data && typeof data === 'object' && data.consent === true ? data : null;
-    } catch { return null; }
-  };
-  const save = (consent) => {
-    if (consent) {
-      try { localStorage.setItem(storageKey, JSON.stringify({ consent: true, version: 1 })); } catch {}
-      writeCookie('accepted');
-    } else {
-      try { localStorage.removeItem(storageKey); } catch {}
-      try { document.cookie = cookieName + '=; Path=/; Max-Age=0; SameSite=Lax; Secure'; } catch {}
+  try {
+    const existing = JSON.parse(localStorage.getItem(storageKey) || 'null');
+    if (!existing || typeof existing !== 'object' || existing.version !== 2) {
+      localStorage.setItem(storageKey, JSON.stringify({ version: 2, storage: 'functional' }));
     }
-  };
-  const existingConsent = readSaved()?.consent === true || readCookie() === 'accepted';
-  const storagePanel = document.createElement('aside');
-  storagePanel.id = 'storage-preferences';
-  storagePanel.setAttribute('aria-label', 'Storage preferences');
-  storagePanel.innerHTML = `
-    <div class="wrap">
-      <span id="storage-message">This site uses temporary browser memory. Optional preferences can be saved on this device.</span>
-      <div class="storage-actions">
-        <button id="storage-accept" type="button">Save preferences</button>
-        <button id="storage-decline" type="button">Volatile only</button>
-        <button id="storage-clear" type="button">Clear saved preferences</button>
-      </div>
-    </div>
-  `;
-  const storageStyles = document.createElement('style');
-  storageStyles.textContent = `
-    #storage-preferences{position:fixed;left:0;right:0;bottom:34px;z-index:99;
-      background:#142129f5;border-top:1px solid var(--border);padding:10px 0;
-      color:var(--text);font-size:.75rem;box-shadow:0 -8px 30px #0005}
-    #storage-preferences .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    .storage-actions{display:flex;gap:8px;flex-wrap:wrap}
-    .storage-actions button{font:inherit;cursor:pointer;background:#213b40;color:var(--text);
-      border:1px solid var(--border);border-radius:5px;padding:6px 10px}
-    .storage-actions button:focus-visible{outline:2px solid var(--accent)}
-    #storage-preferences,#storage-preferences *{box-sizing:border-box}
-    #storage-preferences .wrap{width:100%;max-width:100%;min-width:0;padding-left:16px;padding-right:16px}
-    #storage-message{min-width:0;overflow-wrap:anywhere;word-break:normal}
-    #storage-preferences .storage-actions{min-width:0;max-width:100%}
-    #storage-preferences .storage-actions button{max-width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere}
-    #storage-preferences [hidden]{display:none!important}
-    @media(max-width:600px){
-      #storage-preferences{font-size:.75rem;bottom:34px;max-height:calc(100dvh - 50px);overflow-y:auto}
-      #storage-preferences .wrap{display:flex;flex-direction:column;align-items:stretch;gap:10px}
-      #storage-preferences .storage-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%;max-width:100%}
-      #storage-preferences #storage-clear{grid-column:1/-1}
-      #storage-preferences{padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
-      #storage-preferences .storage-actions button{padding:9px 8px;min-height:36px}
-    }
-  `;
-  document.head.appendChild(storageStyles);
-  document.body.appendChild(storagePanel);
-  const message = storagePanel.querySelector('#storage-message');
-  if (existingConsent) {
-    message.textContent = 'Preferences are saved on this device. Session resources remain volatile.';
-    storagePanel.querySelector('#storage-accept').hidden = true;
-    storagePanel.querySelector('#storage-decline').hidden = true;
-  }
-  storagePanel.querySelector('#storage-accept').addEventListener('click', () => {
-    save(true);
-    storagePanel.remove();
-  });
-  storagePanel.querySelector('#storage-decline').addEventListener('click', () => {
-    save(false);
-    storagePanel.remove();
-  });
-  storagePanel.querySelector('#storage-clear').addEventListener('click', () => {
-    save(false);
-    storagePanel.remove();
-  });
+  } catch { /* Continue with volatile session storage when persistence is blocked. */ }
+  // Remove the legacy preference cookie; no new cookie is created.
+  try { document.cookie = 'suomisaundi_prefs=; Path=/; Max-Age=0; SameSite=Lax; Secure'; } catch {}
+  // Request durable storage where supported; browsers retain final control.
+  try { navigator.storage?.persist?.().catch(() => {}); } catch {}
   // Explicitly expose the bounded pool for later monolithic modules, without persistent backing.
   Object.defineProperty(window, 'suomisaundiSessionPool', { value: sessionPool, configurable: false });
 
