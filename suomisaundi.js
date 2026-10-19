@@ -74,7 +74,7 @@
         <div class="eyebrow">Music · Culture · Community</div>
         <h1>Suomisaundi<br>United.</h1>
         <p class="lead">An independent home for Suomisaundi: celebrating the sound, the artists, and the community around Finnish psychedelic music.</p>
-        <div class="actions"><a class="button primary" href="#about">Explore the project</a><a class="button" href="https://github.com/Suomisaundi-United" rel="noopener noreferrer">GitHub organization ↗</a></div>
+        <div class="actions"><a class="button primary" href="#about">Explore the project</a></div>
       </div></div>
       <section class="info" id="about"><div class="wrap">
         <h2>A space for the sound</h2>
